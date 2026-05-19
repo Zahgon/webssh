@@ -66,11 +66,7 @@ class Font(object):
         self.family = self.get_family(filename)
         self.url = self.get_url(filename, dirs)
 
-    def get_family(self, filename):
-        return filename.split('.')[0]
 
-    def get_url(self, filename, dirs):
-        return '/'.join(dirs + [filename])
 
 
 def get_app_settings(options):

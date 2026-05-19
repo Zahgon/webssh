@@ -55,65 +55,10 @@ class Worker(object):
         if events & IOLoop.ERROR:
             self.close(reason='error event occurred')
 
-    @classmethod
-    def gen_id(cls):
-        return secrets.token_urlsafe(nbytes=32) if secrets else uuid4().hex
 
-    def set_handler(self, handler):
-        if not self.handler:
-            self.handler = handler
 
-    def update_handler(self, mode):
-        if self.mode != mode:
-            self.loop.update_handler(self.fd, mode)
-            self.mode = mode
-        if mode == IOLoop.WRITE:
-            self.loop.call_later(0.1, self, self.fd, IOLoop.WRITE)
 
-    def on_read(self):
-        logging.debug('worker {} on read'.format(self.id))
-        try:
-            data = self.chan.recv(BUF_SIZE)
-        except (OSError, IOError) as e:
-            logging.error(e)
-            if self.chan.closed or errno_from_exception(e) in _ERRNO_CONNRESET:
-                self.close(reason='chan error on reading')
-        else:
-            logging.debug('{!r} from {}:{}'.format(data, *self.dst_addr))
-            if not data:
-                self.close(reason='chan closed')
-                return
 
-            logging.debug('{!r} to {}:{}'.format(data, *self.handler.src_addr))
-            try:
-                self.handler.write_message(data, binary=True)
-            except tornado.websocket.WebSocketClosedError:
-                self.close(reason='websocket closed')
-
-    def on_write(self):
-        logging.debug('worker {} on write'.format(self.id))
-        if not self.data_to_dst:
-            return
-
-        data = ''.join(self.data_to_dst)
-        logging.debug('{!r} to {}:{}'.format(data, *self.dst_addr))
-
-        try:
-            sent = self.chan.send(data)
-        except (OSError, IOError) as e:
-            logging.error(e)
-            if self.chan.closed or errno_from_exception(e) in _ERRNO_CONNRESET:
-                self.close(reason='chan error on writing')
-            else:
-                self.update_handler(IOLoop.WRITE)
-        else:
-            self.data_to_dst = []
-            data = data[sent:]
-            if data:
-                self.data_to_dst.append(data)
-                self.update_handler(IOLoop.WRITE)
-            else:
-                self.update_handler(IOLoop.READ)
 
     def close(self, reason=None):
         if self.closed:

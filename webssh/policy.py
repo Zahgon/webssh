@@ -55,32 +55,7 @@ class AutoAddPolicy(paramiko.client.MissingHostKeyPolicy):
     """
     lock = threading.Lock()
 
-    def is_missing_host_key(self, client, hostname, key):
-        k = client._system_host_keys.lookup(hostname) or \
-                client._host_keys.lookup(hostname)
-        if k is None:
-            return True
-        host_key = k.get(key.get_name(), None)
-        if host_key is None:
-            return True
-        if host_key != key:
-            raise paramiko.BadHostKeyException(hostname, key, host_key)
 
-    def missing_host_key(self, client, hostname, key):
-        with self.lock:
-            if self.is_missing_host_key(client, hostname, key):
-                keytype = key.get_name()
-                logging.info(
-                    'Adding {} host key for {}'.format(keytype, hostname)
-                )
-                client._host_keys._entries.append(
-                    paramiko.hostkeys.HostKeyEntry([hostname], key)
-                )
-
-                with open(client._host_keys_filename, 'a') as f:
-                    f.write('{} {} {}\n'.format(
-                        hostname, keytype, key.get_base64()
-                    ))
 
 
 paramiko.client.AutoAddPolicy = AutoAddPolicy
